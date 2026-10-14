@@ -246,8 +246,8 @@ function drawCover(doc){
   head('Date:',105.4);val(p.date?fmtDate(p.date):'',114.4);
   head('Revision:',126.5);val(p.rev,135.4);
   if(p.docNo){head('Document No:',147.6);val(p.docNo,156.5,10)}
-  head('Prepared By / Date:',249.1,12);val(`${dash(p.engineer)} / ${p.date?fmtDate(p.date):'-'}`,256.4,12);
-  head('Checked By / Date:',266.9,12);val(`${dash(p.checkedBy)} / -`,274.2,12);
+  head('Prepared By:',249.1,12);val(p.engineer,256.4,12);
+  head('Checked By:',266.9,12);val(p.checkedBy,274.2,12);
   doc.setFontSize(7);doc.setTextColor(...TL);let y=240.9;
   const ln=(t,b,gap)=>{doc.setFont('helvetica',b?'bold':'normal');doc.text(t,14,y);y+=gap||2.87};
   const lab=(l,v)=>{doc.setFont('helvetica','bold');doc.text(l,14,y);const w=doc.getTextWidth(l+' ');doc.setFont('helvetica','normal');doc.text(v,14+w,y)};
