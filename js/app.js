@@ -18,11 +18,16 @@ const LIBMAP=Object.fromEntries(LIB.map(r=>[r.id,r]));
 const RATE={H:'High',M:'Medium',L:'Low'};
 
 const today=()=>new Date().toISOString().slice(0,10);
-const blankProject=()=>({name:'',client:'',job:'',rev:'D01',docNo:'',engineer:'TEC',checkedBy:'BJJ',date:today(),desc:'',pd:'',pc:'',notes:'',notPD:true});
+const blankProject=()=>({addr1:'',addr2:'',addr3:'',client:'',job:'',rev:'D01',docNo:'',engineer:'TEC',checkedBy:'BJJ',date:today(),desc:'',pd:'',pc:'',notes:'',notPD:true});
+function normProject(pr){pr=Object.assign(blankProject(),pr||{});
+  if(pr.name&&!pr.addr1&&!pr.addr2&&!pr.addr3){const parts=String(pr.name).split(/\s*,\s*/);pr.addr1=parts.shift()||'';pr.addr2=parts.shift()||'';pr.addr3=parts.join(', ')}
+  delete pr.name;return pr}
+const projLines=p=>[p.addr1,p.addr2,p.addr3].map(x=>String(x||'').trim()).filter(Boolean);
+const projText=p=>projLines(p).join(', ');
 function pick(r){return {hazard:r.hazard,risk:r.risk,design:r.design,info:r.info,ini:r.ini,rev:r.rev}}
 const isSug=(r,types)=>!!r.tags&&types.some(t=>r.tags.includes(t));
 function exampleState(){
-  const s={project:Object.assign(blankProject(),{name:'Single storey rear extension, 24 Orchard Road',client:'Mr & Mrs Example',job:'157XXX',docNo:'157XXX-JBL-XXX-ZZZ-RA-SE-901',desc:'Single storey rear extension with a new steel beam forming an opening in the existing rear wall. Trench fill foundations on clay, close to an existing tree.',pd:'Example Architects Ltd',pc:'To be appointed'}),types:['e'],sel:{},custom:[],example:true};
+  const s={project:Object.assign(blankProject(),{addr1:'Single storey rear extension',addr2:'24 Orchard Road',addr3:'Example Town, AB1 2CD',client:'Mr & Mrs Example',job:'157XXX',docNo:'157XXX-JBL-XXX-ZZZ-RA-SE-901',desc:'Single storey rear extension with a new steel beam forming an opening in the existing rear wall. Trench fill foundations on clay, close to an existing tree.',pd:'Example Architects Ltd',pc:'To be appointed'}),types:['e'],sel:{},custom:[],example:true};
   LIB.filter(r=>isSug(r,['e'])).forEach(r=>s.sel[r.id]=pick(r));return s;
 }
 
@@ -30,7 +35,7 @@ let firm={...FIRM_DEFAULT},S;
 try{const f=JSON.parse(localStorage.getItem('jbl.dra.firm')||'null');if(f)firm=Object.assign(firm,f)}catch(e){}
 try{S=JSON.parse(localStorage.getItem('jbl.dra.project')||'null')}catch(e){}
 if(!S||!S.project)S=exampleState();
-S.custom=S.custom||[];S.sel=S.sel||{};S.types=S.types||[];S.project=Object.assign(blankProject(),S.project);
+S.custom=S.custom||[];S.sel=S.sel||{};S.types=S.types||[];S.project=normProject(S.project);
 
 let saveT;
 function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('jbl.dra.project',JSON.stringify(S))}catch(e){}},300)}
@@ -62,7 +67,7 @@ $('p_notpd').addEventListener('change',e=>{S.project.notPD=e.target.checked;pers
 $('firmReset').addEventListener('click',()=>{firm={...FIRM_DEFAULT};persistFirm();fillForm();msg('Company details restored from the template.','ok')});
 function updateTB(){
   const p=S.project,n=Object.keys(S.sel).length;
-  $('tbProj').textContent=dash(p.name);$('tbClient').textContent=dash(p.client);$('tbJob').textContent=dash(p.job);
+  $('tbProj').textContent=dash(projText(p));$('tbClient').textContent=dash(p.client);$('tbJob').textContent=dash(p.job);
   $('tbEng').textContent=dash(p.engineer);$('tbRev').textContent=dash(p.rev);$('tbCount').textContent=n;
   $('barCount').textContent=n+(n===1?' risk':' risks');
 }
@@ -183,7 +188,7 @@ $('openJson').addEventListener('change',e=>{const f=e.target.files[0];if(!f)retu
       const lv=(l,s)=>{const r=l*s;return r>=6?'H':r>=3?'M':'L'};
       Object.values(d.sel).forEach(s=>{if(!s.ini&&s.li){s.ini=lv(s.li,s.si);s.rev=lv(s.lr,s.sr)}if(s.info==null&&s.residual!=null)s.info=s.residual});
       (d.custom||[]).forEach(c=>{if(!c.ini&&c.li){c.ini=lv(c.li,c.si);c.rev=lv(c.lr,c.sr)}if(c.info==null)c.info=c.residual||''});
-      S={project:Object.assign(blankProject(),d.project),types:d.types||[],sel:d.sel,custom:d.custom||[],example:false};
+      S={project:normProject(d.project),types:d.types||[],sel:d.sel,custom:d.custom||[],example:false};
       Object.keys(S.sel).forEach(id=>{if(!getR(id))delete S.sel[id]});
       open.clear();fillForm();renderReg();persist();msg(`Opened ${f.name}`,'ok')}
     catch(err){msg('That file isn\'t a risk assessment project file.','err')}
@@ -199,57 +204,64 @@ $('exClear').addEventListener('click',newProject);
 const T=[87,155,170],GREY=[160,160,160],INK=[0,0,0],TXT=[65,65,65];
 const RC={H:[255,0,0],M:[247,150,70],L:[0,176,80]};
 function drawHeader(doc,page,total){
-  const p=S.project,x=10,y=8,w=190,h=30,lw=30,rw=50,mx=x+lw,mw=w-lw-rw;
-  doc.setDrawColor(...GREY);doc.setLineWidth(.25);doc.rect(x,y,w,h);
-  doc.line(mx,y,mx,y+h);doc.line(mx+mw,y,mx+mw,y+h);
-  doc.line(mx,y+10,mx+mw,y+10);doc.line(mx,y+20,mx+mw,y+20);
-  const cw=mw/4;for(let i=1;i<4;i++)doc.line(mx+cw*i,y+20,mx+cw*i,y+h);
-  try{doc.addImage(LOGO,'JPEG',x+3.5,y+1.6,23,26.8)}catch(e){}
-  doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...TXT);
-  doc.text('Project:',mx+1.5,y+2.8);doc.text('Client:',mx+1.5,y+12.8);
-  ['Job No:','Engineer:','Date:','Page No:'].forEach((t,i)=>doc.text(t,mx+cw*i+1.5,y+22.8));
-  doc.setFontSize(8.5);doc.setTextColor(...INK);
-  const fit=(s,maxw)=>doc.splitTextToSize(s,maxw)[0];
-  doc.text(fit(dash(p.name),mw-6),mx+mw/2,y+7.6,{align:'center'});
-  doc.text(fit(dash(p.client),mw-6),mx+mw/2,y+17.6,{align:'center'});
-  [dash(p.job),dash(p.engineer),p.date?fmtDate(p.date):'-',`${page} of ${total}`].forEach((t,i)=>doc.text(fit(t,cw-3),mx+cw*i+cw/2,y+27.4,{align:'center'}));
-  const ax=x+w-2;let ay=y+4.2;doc.setTextColor(...T);doc.setFontSize(7.2);
-  const lines=[firm.name,...String(firm.address||'').split('\n'),'',`T: ${firm.tel}`,`E: ${firm.email}`,`W: ${firm.web}`];
-  lines.forEach(l=>{if(l===''){ay+=1.4;return}doc.text(fit(l,rw-3),ax,ay,{align:'right'});ay+=3.1});
+  // Letterhead box and content border, measured from the JBL calc pack (mm)
+  const p=S.project,X0=9.35,X1=200.55,Y0=8.15,Y1=44,C1=39.65,C2=161.35,R1=20.1,R2=32.05,CELLS=[C1,90.4,113.3,136.7,C2];
+  doc.setDrawColor(0);doc.setLineWidth(.3);
+  doc.rect(X0,Y0,X1-X0,Y1-Y0);doc.line(C1,Y0,C1,Y1);doc.line(C2,Y0,C2,Y1);
+  doc.line(C1,R1,C2,R1);doc.line(C1,R2,C2,R2);
+  for(let k=1;k<4;k++)doc.line(CELLS[k],R2,CELLS[k],Y1);
+  doc.setLineWidth(.35);doc.rect(10.4,47.35,189.1,239.75);   // page border around the content
+  try{doc.addImage(LOGO,'JPEG',9.9,8.7,29.4,34.4)}catch(e){}
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(0);
+  doc.text('Project:',C1+1.1,11.8);doc.text('Client:',C1+1.1,23.8);
+  ['Job No:','Engineer:','Date:','Page No:'].forEach((t,k)=>doc.text(t,CELLS[k]+1.1,35.7));
+  const mid=(C1+C2)/2,fitc=(t,w,fs)=>{let f=fs;doc.setFontSize(f);while(doc.getTextWidth(t)>w&&f>6.5){f-=.25;doc.setFontSize(f)}return doc.splitTextToSize(t,w)[0]};
+  doc.text(fitc(dash(p.addr1||projLines(p)[0]),C2-C1-4,9),mid,16.6,{align:'center'});
+  doc.text(fitc(dash(p.client),C2-C1-4,9),mid,28.5,{align:'center'});
+  [dash(p.job),dash(p.engineer),p.date?fmtDate(p.date):'-',`${page}`].forEach((t,k)=>doc.text(fitc(t,CELLS[k+1]-CELLS[k]-3,9),(CELLS[k]+CELLS[k+1])/2,40.6,{align:'center'}));
+  doc.setFontSize(7);doc.setTextColor(...T);const ac=(C2+X1)/2;
+  const top=[firm.name,...String(firm.address||'').split('\n')].slice(0,4);
+  top.forEach((l,k)=>doc.text(fitc(l,X1-C2-2,7),ac,11.8+k*4.5,{align:'center'}));
+  doc.setFontSize(7);
+  [`T: ${firm.tel}`,`E: ${firm.email}`,`W: ${firm.web}`].forEach((l,k)=>doc.text(fitc(l,X1-C2-2,7),ac,34.3+k*4.1,{align:'center'}));
 }
 function drawCover(doc){
-  const p=S.project,TL=[87,155,170];
-  doc.setDrawColor(0);doc.setLineWidth(.35);doc.rect(9,9,192,279);
-  try{doc.addImage(LOGO,'JPEG',37,22,52,59)}catch(e){}
-  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...TL);
-  doc.text("Designer's Risk Assessment",63,122,{align:'center'});
-  doc.setFont('helvetica','italic');doc.setFontSize(8);
-  doc.text('Health & Safety – CDM Regulations 2015, Regulation 9',63,129,{align:'center'});
-  doc.text('to be read in conjunction with the structural calculations and drawings',63,133.5,{align:'center'});
-  doc.setDrawColor(...TL);doc.setLineWidth(.6);doc.line(125.5,22,125.5,272);
-  const X=133,UW=52;
-  const head=(t,y)=>{doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...TL);doc.text(t,X,y);doc.setLineWidth(.3);doc.line(X,y+1,X+UW,y+1)};
-  const val=(t,y)=>{doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);const l=doc.splitTextToSize(dash(t),UW+8).slice(0,3);doc.text(l,X,y,{lineHeightFactor:1.3});return l.length};
-  head('Project:',28);val(p.name,35);
-  head('Job No:',62);val(p.job,70);
-  head('Client:',84);val(p.client,92);
-  head('Date:',106);val(p.date?fmtDate(p.date):'',114);
-  head('Revision:',128);val(p.rev,136);
-  if(p.docNo){head('Document No:',150);val(p.docNo,158)}
-  head('Prepared By / Date:',238);val(`${dash(p.engineer)} / ${p.date?fmtDate(p.date):'-'}`,245);
-  head('Checked By / Date:',257);val(`${dash(p.checkedBy)} / -`,264);
-  let y=232;const ln=(t,b,gap)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(6.5);doc.setTextColor(...TL);doc.text(t,15,y);y+=gap||2.9};
-  ln(firm.name,true);String(firm.address||'').split('\n').forEach(l=>ln(l));y+=1.6;
-  ln(`T: ${firm.tel}`,false,4.2);ln(`E: ${firm.email}`);ln(`W: ${firm.web}`,false,4.2);
+  // Cover laid out as the JBL calc pack cover (positions in mm, from the example PDF)
+  const p=S.project,TL=[103,154,167];
+  doc.setDrawColor(0);doc.setLineWidth(.5);doc.rect(8.5,8.5,193.1,280);
+  try{doc.addImage(LOGO,'JPEG',34.6,21.4,60.3,68.4)}catch(e){}
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...TL);
+  doc.text("Designer's Risk Assessment",66.5,131.4,{align:'center'});
+  doc.setFont('helvetica','italic');doc.setFontSize(10);
+  doc.text('Health & Safety – CDM Regulations 2015, Regulation 9',66.5,140.9,{align:'center'});
+  doc.text('to be read with the structural calculations and drawings',66.5,146,{align:'center'});
+  doc.setDrawColor(...TL);doc.setLineWidth(.7);doc.line(125.8,22,125.8,272.7);
+  const X=132.9,UW=53;
+  const head=(t,y,fs)=>{doc.setFont('helvetica','bold');doc.setFontSize(fs||16);doc.setTextColor(...TL);doc.text(t,X,y);doc.setDrawColor(...TL);doc.setLineWidth(.35);doc.line(X,y+1.2,X+UW,y+1.2)};
+  const val=(t,y,fs)=>{doc.setFont('helvetica','normal');doc.setFontSize(fs||14);doc.setTextColor(0);doc.text(doc.splitTextToSize(dash(t),UW+12)[0],X,y)};
+  head('Project:',28);
+  const pl=projLines(p);(pl.length?pl:['-']).slice(0,3).forEach((t,k)=>val(t,36.9+k*5.65));
+  head('Job No:',60.4);val(p.job,69.3);
+  head('Client:',81.5);val(p.client,90.4);
+  head('Date:',105.4);val(p.date?fmtDate(p.date):'',114.4);
+  head('Revision:',126.5);val(p.rev,135.4);
+  if(p.docNo){head('Document No:',147.6);val(p.docNo,156.5,10)}
+  head('Prepared By / Date:',249.1,12);val(`${dash(p.engineer)} / ${p.date?fmtDate(p.date):'-'}`,256.4,12);
+  head('Checked By / Date:',266.9,12);val(`${dash(p.checkedBy)} / -`,274.2,12);
+  doc.setFontSize(7);doc.setTextColor(...TL);let y=240.9;
+  const ln=(t,b,gap)=>{doc.setFont('helvetica',b?'bold':'normal');doc.text(t,14,y);y+=gap||2.87};
+  const lab=(l,v)=>{doc.setFont('helvetica','bold');doc.text(l,14,y);const w=doc.getTextWidth(l+' ');doc.setFont('helvetica','normal');doc.text(v,14+w,y)};
+  ln(firm.name,true);String(firm.address||'').split('\n').forEach(l=>ln(l));
+  y+=2.8;lab('T:',firm.tel);y+=5.8;lab('E:',firm.email);y+=2.8;lab('W:',firm.web);y+=5.7;
   ln('Registered in England:',true);ln(`Number ${firm.reg}`);
 }
 function buildPdf(){
   const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const M=10,W=210,p=S.project,firmName=firm.name;
-  drawCover(doc);doc.addPage();let y=46;
+  const M=13,W=210,p=S.project,firmName=firm.name;
+  drawCover(doc);doc.addPage();let y=55;
   const para=(t,opt={})=>{doc.setFont('helvetica',opt.style||'normal');doc.setFontSize(opt.size||8.6);doc.setTextColor(...(opt.color||INK));
     const ind=opt.indent||0,lines=doc.splitTextToSize(t,W-2*M-ind);
-    if(y+lines.length*3.9>285){doc.addPage();y=46}
+    if(y+lines.length*3.9>281){doc.addPage();y=55}
     doc.text(lines,M+ind,y,{lineHeightFactor:1.3});y+=lines.length*(opt.size||8.6)*.3528*1.3+(opt.after??2.6)};
   doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...INK);
   const ttl="HEALTH & SAFETY – DESIGNER'S RISK ASSESSMENT";doc.text(ttl,M,y);doc.setLineWidth(.3);doc.setDrawColor(...INK);doc.line(M,y+.9,M+doc.getTextWidth(ttl),y+.9);y+=7;
@@ -282,33 +294,32 @@ function buildPdf(){
   }
   // register rows
   const rows=[];
-  ['A','B'].forEach(ph=>{
-    const items=CATS.filter(c=>c.ph===ph).flatMap(c=>allRisks().filter(r=>r.cat===c.id&&S.sel[r.id]));
-    if(!items.length)return;
-    rows.push([{content:ph,styles:{fontStyle:'bold',halign:'center'}},{content:PHASES[ph],colSpan:6,styles:{fontStyle:'bold',halign:'center'}}]);
-    items.forEach((r,i)=>{const s=S.sel[r.id];
-      const rc=v=>({content:v,styles:{fillColor:RC[v],textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:9}});
-      rows.push([{content:String(i+1),styles:{halign:'center',valign:'middle'}},s.hazard,s.risk,rc(s.ini),s.design||'N/A',s.info,rc(s.rev)])});
+  const rc=v=>({content:v,styles:{fillColor:RC[v],textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:9}});
+  CATS.forEach(c=>{
+    const items=allRisks().filter(r=>r.cat===c.id&&S.sel[r.id]);if(!items.length)return;
+    rows.push([{content:c.name,colSpan:7,styles:{fontStyle:'bold',fontSize:8.2,fillColor:[226,239,242],textColor:[47,111,125],halign:'left',cellPadding:{top:1.8,bottom:1.8,left:2,right:2}}}]);
+    items.forEach(r=>{const s=S.sel[r.id];
+      rows.push([{content:r.id,styles:{halign:'center',valign:'middle',fontSize:7,fontStyle:'bold'}},s.hazard,s.risk,rc(s.ini),s.design||'N/A',s.info,rc(s.rev)])});
   });
-  doc.autoTable({startY:y+2,margin:{left:M,right:M,top:44,bottom:12},theme:'grid',
+  doc.autoTable({startY:y+2,margin:{left:M,right:M,top:51,bottom:13.5},theme:'grid',
     styles:{font:'helvetica',fontSize:7.6,cellPadding:1.4,lineColor:INK,lineWidth:.2,textColor:INK,valign:'middle',overflow:'linebreak'},
     headStyles:{fillColor:T,textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:7.8},
     head:[['Ref','Activity / Hazard','Risk(s)','Initial Risk Rating','Design Mitigation Measures and Controls (Eliminate, Reduce, Information, and Control)','Information','Revised Risk Rating']],
-    columnStyles:{0:{cellWidth:9},1:{cellWidth:31},2:{cellWidth:31},3:{cellWidth:14},4:{cellWidth:43},5:{cellWidth:48},6:{cellWidth:14}},
+    columnStyles:{0:{cellWidth:15},1:{cellWidth:29},2:{cellWidth:29},3:{cellWidth:13},4:{cellWidth:40},5:{cellWidth:45},6:{cellWidth:13}},
     body:rows,rowPageBreak:'avoid'});
-  y=doc.lastAutoTable.finalY+8;if(y>280){doc.addPage();y=48}
+  y=doc.lastAutoTable.finalY+8;if(y>276){doc.addPage();y=55}
 doc.setFont('helvetica','italic');doc.setFontSize(7.6);doc.setTextColor(...TXT);
-  doc.text(doc.splitTextToSize('This assessment is to be read in conjunction with the J B Langley Associates Ltd structural calculations and drawings and all relevant Architects\' drawings. Any risks identified during construction that are not covered here are to be reported to the Engineer before the work concerned proceeds.'.replace('J B Langley Associates Ltd',firmName),W-2*M),M,Math.min(y,284));
+  doc.text(doc.splitTextToSize('This assessment is to be read in conjunction with the J B Langley Associates Ltd structural calculations and drawings and all relevant Architects\' drawings. Any risks identified during construction that are not covered here are to be reported to the Engineer before the work concerned proceeds.'.replace('J B Langley Associates Ltd',firmName),W-2*M),M,Math.min(y,282));
   const n=doc.getNumberOfPages();
   for(let i=2;i<=n;i++){doc.setPage(i);drawHeader(doc,i,n);
     doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...TXT);
-    doc.text(`${firmName} · Registered in England: Number ${firm.reg}`,M,291);
-    if(p.docNo)doc.text(`${p.docNo}${p.rev?'-'+p.rev:''}`,W-M,291,{align:'right'});}
+    doc.text(`${firmName} · Registered in England: Number ${firm.reg}`,M,292);
+    if(p.docNo)doc.text(`${p.docNo}${p.rev?'-'+p.rev:''}`,W-M,292,{align:'right'});}
   return doc;
 }
 $('pdfBtn').addEventListener('click',()=>{
   if(!Object.keys(S.sel).length){msg('Tick at least one risk before creating the PDF.','err');return}
-  if(!S.project.name&&!S.project.job){msg('Add the project name or job number first.','err');$('p_name').focus();return}
+  if(!projLines(S.project).length&&!S.project.job){msg('Add the project address or job number first.','err');$('p_a1').focus();return}
   if(!window.jspdf){msg('The PDF library didn\'t load. Check your connection and reload the page.','err');return}
   msg('Creating PDF…');
   let blob;try{blob=buildPdf().output('blob')}catch(e){console.error(e);msg('Something went wrong building the PDF.','err');return}
