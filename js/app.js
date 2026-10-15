@@ -76,7 +76,15 @@ function sugInfo(){const all=LIB.filter(r=>isSug(r,S.types)),todo=all.filter(r=>
   $('suggest').disabled=!todo;$('suggest').textContent=todo?`Tick ${todo} suggested risks`:'Tick suggested risks'}
 function renderTypes(){$('types').innerHTML=TYPES.map(t=>`<button class="chip" data-t="${t.k}" aria-pressed="${S.types.includes(t.k)}">${t.n}</button>`).join('');sugInfo()}
 $('types').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;const k=b.dataset.t;
-  S.types=S.types.includes(k)?S.types.filter(x=>x!==k):[...S.types,k];renderTypes();renderReg();persist()});
+  S.types=S.types.includes(k)?S.types.filter(x=>x!==k):[...S.types,k];
+  // keep the ticked list in step with the works types: untick library risks no longer suggested
+  const drop=LIB.filter(r=>S.sel[r.id]&&!isSug(r,S.types));
+  drop.forEach(r=>{delete S.sel[r.id];open.delete(r.id)});
+  const todo=LIB.filter(r=>isSug(r,S.types)&&!S.sel[r.id]).length;
+  notEx();renderTypes();renderReg();updateTB();persist();
+  const parts=[];if(drop.length)parts.push(`Unticked ${drop.length} risk${drop.length===1?'':'s'} not suggested for this type of works.`);
+  if(todo)parts.push(`${todo} suggested risk${todo===1?' is':'s are'} not ticked yet.`);
+  msg(parts.join(' ')||'Type of works updated.',drop.length||todo?'ok':'')});
 $('suggest').addEventListener('click',()=>{
   if(!S.types.length){msg('Pick a type of works first.','err');return}
   let n=0;LIB.forEach(r=>{if(isSug(r,S.types)&&!S.sel[r.id]){S.sel[r.id]=pick(r);n++}});
@@ -193,7 +201,11 @@ $('openJson').addEventListener('change',e=>{const f=e.target.files[0];if(!f)retu
       open.clear();fillForm();renderReg();persist();msg(`Opened ${f.name}`,'ok')}
     catch(err){msg('That file isn\'t a risk assessment project file.','err')}
     e.target.value=''};rd.readAsText(f)});
-let armed=0;
+let armed=0,armedU=0;
+$('untickAll').addEventListener('click',()=>{const b=$('untickAll'),n=Object.keys(S.sel).length;
+  if(!n){msg('Nothing is ticked.');return}
+  if(Date.now()-armedU<4000){armedU=0;b.textContent='Untick all';S.sel={};open.clear();touch();msg(`Unticked all ${n} risks.`,'ok');return}
+  armedU=Date.now();b.textContent=`Click again to untick ${n}`;setTimeout(()=>{if(Date.now()-armedU>=3900)b.textContent='Untick all'},4000)});
 function newProject(){S={project:blankProject(),types:[],sel:{},custom:[],example:false};open.clear();$('q').value='';fillForm();renderReg();persist();msg('New project started. Fill in the project details and pick the type of works.','ok')}
 $('newProj').addEventListener('click',()=>{const b=$('newProj');
   if(Date.now()-armed<4000){armed=0;b.textContent='New project';newProject();return}
