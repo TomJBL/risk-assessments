@@ -217,7 +217,7 @@ $('exClear').addEventListener('click',newProject);
 // black-and-white projects banner. Inside pages: teal top bar, logo, document title and reference, a strip
 // of project details (client, prepared by, checked, rev, date, page x of y) and an address footer.
 const TEAL=[91,155,171],TEAL_DK=[59,118,134],TINT=[238,245,247],RULE=[201,215,219],INK=[43,52,56],MUTED=[92,108,114],TXT=MUTED;
-const RC={H:[255,0,0],M:[247,150,70],L:[0,176,80]};
+const RC={H:[196,82,74],M:[222,150,72],L:[88,160,108]};   // muted red / amber / green
 const PX=v=>v*0.26458;                 // the calc pack is laid out in CSS px on A4 (794 px wide)
 const PW=210,PH=297,PM=PX(54),PR=PW-PX(54);
 function docRef(p){const no=(p.docNo||'').trim();if(no)return `${no}${p.rev&&!no.endsWith(p.rev)?'-'+p.rev:''}`;return [p.job,p.rev].filter(Boolean).join(' · ')||'-'}
@@ -303,7 +303,7 @@ function buildPdf(){
     const ind=opt.indent||0,lines=doc.splitTextToSize(t,PR-M-ind);
     if(y+lines.length*3.9>BOT){doc.addPage();y=TOP}
     doc.text(lines,M+ind,y,{lineHeightFactor:1.3});y+=lines.length*(opt.size||8.6)*.3528*1.3+(opt.after??2.6)};
-  const section=(t,first)=>{if(!first)y+=6;if(y+14>BOT){doc.addPage();y=TOP}
+  const section=(t,first,fresh)=>{if(fresh&&y>TOP){doc.addPage();y=TOP}else if(!first)y+=6;if(y+14>BOT){doc.addPage();y=TOP}
     toc.push({t,page:pg()});const n=String(toc.length).padStart(2,'0');
     doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...TEAL_DK);doc.text(n,M,y);
     doc.setTextColor(...INK);doc.text(t,M+9,y);doc.setDrawColor(...TEAL);doc.setLineWidth(.3);doc.line(M,y+2.4,PR,y+2.4);y+=9};
@@ -335,7 +335,7 @@ function buildPdf(){
     if(p.pd||p.pc)para(`Principal Designer: ${dash(p.pd)}.   Principal / main contractor: ${dash(p.pc)}.`);
     if(p.notes)para(p.notes);
   }
-  section('Risk register');
+  section('Risk register',false,true);
   const rows=[];
   const rc=v=>({content:v,styles:{fillColor:RC[v],textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:9}});
   CATS.forEach(c=>{
@@ -346,7 +346,7 @@ function buildPdf(){
   });
   doc.autoTable({startY:y,margin:{left:M,right:PW-PR,top:TOP-4,bottom:PH-BOT+2},theme:'grid',
     styles:{font:'helvetica',fontSize:7.6,cellPadding:1.4,lineColor:RULE,lineWidth:.2,textColor:INK,valign:'middle',overflow:'linebreak'},
-    headStyles:{fillColor:[255,255,255],textColor:TEAL_DK,fontStyle:'bold',halign:'center',valign:'bottom',fontSize:6.8,lineColor:RULE},
+    headStyles:{fillColor:[255,255,255],textColor:TEAL_DK,fontStyle:'bold',halign:'center',valign:'middle',fontSize:6.8,lineColor:RULE},
     head:[['REF','ACTIVITY / HAZARD','RISK(S)','INITIAL RISK RATING','DESIGN MITIGATION MEASURES AND CONTROLS (ELIMINATE, REDUCE, INFORMATION, AND CONTROL)','INFORMATION','REVISED RISK RATING']],
     columnStyles:{0:{cellWidth:15},1:{cellWidth:28},2:{cellWidth:28},3:{cellWidth:13},4:{cellWidth:38.5},5:{cellWidth:43.2},6:{cellWidth:13}},
     didDrawCell:d=>{if(d.section==='head'){doc.setDrawColor(...TEAL);doc.setLineWidth(.45);doc.line(d.cell.x,d.cell.y+d.cell.height,d.cell.x+d.cell.width,d.cell.y+d.cell.height)}},
