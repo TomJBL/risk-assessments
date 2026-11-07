@@ -2,7 +2,8 @@
 
 A browser tool for J B Langley Associates Ltd engineers. It produces a CDM 2015
 Regulation 9 Designer's Risk Assessment PDF for domestic extensions, alterations
-and new build houses, in the same house style as the structural calculation pack.
+and new build houses, in the same house style as the structural calculation pack (cover band, projects
+banner, page header strip and footer).
 
 It runs entirely in the browser. Project details are never uploaded anywhere:
 they stay in the engineer's own browser and in the project files they save.
@@ -53,7 +54,8 @@ make the change and commit. The site updates within a couple of minutes.
 | `css/styles.css` | Styling (JBL teal, Arial) |
 | `js/risk-library.js` | The risk library, the file to edit |
 | `js/app.js` | The tool and the PDF layout |
-| `js/logo.js` | JBL logo used in the PDF |
+| `js/logo.js` | JBL logo used on the page |
+| `js/brand.js` | Cover band, small logo, projects banner and contact icons used in the PDF (same as the calculation pack) |
 | `assets/jbl-logo.jpg` | JBL logo, also used as the browser tab icon |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
 

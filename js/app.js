@@ -212,75 +212,106 @@ $('newProj').addEventListener('click',()=>{const b=$('newProj');
   armed=Date.now();b.textContent='Click again to clear';setTimeout(()=>{if(Date.now()-armed>=3900)b.textContent='New project'},4000)});
 $('exClear').addEventListener('click',newProject);
 
-// ---------- PDF (portrait A4, letterhead header on every page, as the calc pack) ----------
-const T=[87,155,170],GREY=[160,160,160],INK=[0,0,0],TXT=[65,65,65];
+// ---------- PDF (portrait A4, in the house style of the structural calculation pack) ----------
+// Cover: logo and teal title band, client / project / contact sidebar, issue details, contents and the
+// black-and-white projects banner. Inside pages: teal top bar, logo, document title and reference, a strip
+// of project details (client, prepared by, checked, rev, date, page x of y) and an address footer.
+const TEAL=[91,155,171],TEAL_DK=[59,118,134],TINT=[238,245,247],RULE=[201,215,219],INK=[43,52,56],MUTED=[92,108,114],TXT=MUTED;
 const RC={H:[255,0,0],M:[247,150,70],L:[0,176,80]};
+const PX=v=>v*0.26458;                 // the calc pack is laid out in CSS px on A4 (794 px wide)
+const PW=210,PH=297,PM=PX(54),PR=PW-PX(54);
+function docRef(p){const no=(p.docNo||'').trim();if(no)return `${no}${p.rev&&!no.endsWith(p.rev)?'-'+p.rev:''}`;return [p.job,p.rev].filter(Boolean).join(' · ')||'-'}
+function fitText(doc,t,w,fs,min){let f=fs;doc.setFontSize(f);while(doc.getTextWidth(t)>w&&f>(min||6)){f-=.25;doc.setFontSize(f)}return doc.splitTextToSize(t,w)[0]}
 function drawHeader(doc,page,total){
-  // Letterhead box and content border, measured from the JBL calc pack (mm)
-  const p=S.project,X0=9.35,X1=200.55,Y0=8.15,Y1=44,C1=39.65,C2=161.35,R1=20.1,R2=32.05,CELLS=[C1,90.4,113.3,136.7,C2];
-  doc.setDrawColor(0);doc.setLineWidth(.3);
-  doc.rect(X0,Y0,X1-X0,Y1-Y0);doc.line(C1,Y0,C1,Y1);doc.line(C2,Y0,C2,Y1);
-  doc.line(C1,R1,C2,R1);doc.line(C1,R2,C2,R2);
-  for(let k=1;k<4;k++)doc.line(CELLS[k],R2,CELLS[k],Y1);
-  doc.setLineWidth(.35);doc.rect(10.4,47.35,189.1,239.75);   // page border around the content
-  try{doc.addImage(LOGO,'JPEG',9.9,8.7,29.4,34.4)}catch(e){}
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(0);
-  doc.text('Project:',C1+1.1,11.8);doc.text('Client:',C1+1.1,23.8);
-  ['Job No:','Engineer:','Date:','Page No:'].forEach((t,k)=>doc.text(t,CELLS[k]+1.1,35.7));
-  const mid=(C1+C2)/2,fitc=(t,w,fs)=>{let f=fs;doc.setFontSize(f);while(doc.getTextWidth(t)>w&&f>6.5){f-=.25;doc.setFontSize(f)}return doc.splitTextToSize(t,w)[0]};
-  doc.text(fitc(dash(p.addr1||projLines(p)[0]),C2-C1-4,9),mid,16.6,{align:'center'});
-  doc.text(fitc(dash(p.client),C2-C1-4,9),mid,28.5,{align:'center'});
-  [dash(p.job),dash(p.engineer),p.date?fmtDate(p.date):'-',`${page}`].forEach((t,k)=>doc.text(fitc(t,CELLS[k+1]-CELLS[k]-3,9),(CELLS[k]+CELLS[k+1])/2,40.6,{align:'center'}));
-  doc.setFontSize(7);doc.setTextColor(...T);const ac=(C2+X1)/2;
-  const top=[firm.name,...String(firm.address||'').split('\n')].slice(0,4);
-  top.forEach((l,k)=>doc.text(fitc(l,X1-C2-2,7),ac,11.8+k*4.5,{align:'center'}));
-  doc.setFontSize(7);
-  [`T: ${firm.tel}`,`E: ${firm.email}`,`W: ${firm.web}`].forEach((l,k)=>doc.text(fitc(l,X1-C2-2,7),ac,34.3+k*4.1,{align:'center'}));
+  const p=S.project;
+  doc.setFillColor(...TEAL);doc.rect(0,0,PW,PX(10),'F');
+  try{doc.addImage(BRAND.logo,'PNG',PM,PX(32),PX(52),PX(45))}catch(e){}
+  doc.setTextColor(...INK);doc.setFont('helvetica','bold');
+  doc.text(fitText(doc,`Designer's Risk Assessment  ·  ${dash(p.job)}`,120,8.5),PR,PX(57),{align:'right'});
+  doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);
+  doc.text(fitText(doc,`${docRef(p)}  ·  ${dash(projLines(p)[0])}`,120,8.5),PR,PX(70),{align:'right'});
+  doc.setDrawColor(...TEAL);doc.setLineWidth(.35);doc.line(PM,PX(80),PR,PX(80));
+  // details strip
+  const cols=[['Client',dash(p.client)],['Prepared by',dash(p.engineer)],['Checked',dash(p.checkedBy)],['Rev',dash(p.rev)],['Date',p.date?fmtDate(p.date):'-'],['Page',`${page} of ${total}`]];
+  const ws=[0,26.5,26.5,19.4,26.5,24.7];ws[0]=(PR-PM)-ws.slice(1).reduce((a,b)=>a+b,0);
+  let x=PM;const yb=PX(96);
+  cols.forEach(([k,v],i)=>{doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(...TEAL_DK);
+    const lab=k.toUpperCase();doc.text(lab,x,yb,{charSpace:.25});const lw=doc.getTextWidth(lab)+lab.length*.25+1.6;
+    doc.setFont('helvetica','normal');doc.setTextColor(...INK);doc.text(fitText(doc,v,ws[i]-lw-1.5,7.5,5.5),x+lw,yb);x+=ws[i]});
+  doc.setDrawColor(...RULE);doc.setLineWidth(.2);doc.line(PM,PX(102),PR,PX(102));
+  drawFooter(doc);
 }
-function drawCover(doc){
-  // Cover laid out as the JBL calc pack cover (positions in mm, from the example PDF)
-  const p=S.project,TL=[103,154,167];
-  doc.setDrawColor(0);doc.setLineWidth(.5);doc.rect(8.5,8.5,193.1,280);
-  try{doc.addImage(LOGO,'JPEG',34.6,21.4,60.3,68.4)}catch(e){}
-  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...TL);
-  doc.text("Designer's Risk Assessment",66.5,131.4,{align:'center'});
-  doc.setFont('helvetica','italic');doc.setFontSize(10);
-  doc.text('Health & Safety – CDM Regulations 2015, Regulation 9',66.5,140.9,{align:'center'});
-  doc.text('to be read with the structural calculations and drawings',66.5,146,{align:'center'});
-  doc.setDrawColor(...TL);doc.setLineWidth(.7);doc.line(125.8,22,125.8,272.7);
-  const X=132.9,UW=53;
-  const head=(t,y,fs)=>{doc.setFont('helvetica','bold');doc.setFontSize(fs||16);doc.setTextColor(...TL);doc.text(t,X,y);doc.setDrawColor(...TL);doc.setLineWidth(.35);doc.line(X,y+1.2,X+UW,y+1.2)};
-  const val=(t,y,fs)=>{doc.setFont('helvetica','normal');doc.setFontSize(fs||14);doc.setTextColor(0);doc.text(doc.splitTextToSize(dash(t),UW+12)[0],X,y)};
-  head('Project:',28);
-  const pl=projLines(p);(pl.length?pl:['-']).slice(0,3).forEach((t,k)=>val(t,36.9+k*5.65));
-  head('Job No:',60.4);val(p.job,69.3);
-  head('Client:',81.5);val(p.client,90.4);
-  head('Date:',105.4);val(p.date?fmtDate(p.date):'',114.4);
-  head('Revision:',126.5);val(p.rev,135.4);
-  if(p.docNo){head('Document No:',147.6);val(p.docNo,156.5,10)}
-  head('Prepared By:',249.1,12);val(p.engineer,256.4,12);
-  head('Checked By:',266.9,12);val(p.checkedBy,274.2,12);
-  doc.setFontSize(7);doc.setTextColor(...TL);let y=240.9;
-  const ln=(t,b,gap)=>{doc.setFont('helvetica',b?'bold':'normal');doc.text(t,14,y);y+=gap||2.87};
-  const lab=(l,v)=>{doc.setFont('helvetica','bold');doc.text(l,14,y);const w=doc.getTextWidth(l+' ');doc.setFont('helvetica','normal');doc.text(v,14+w,y)};
-  ln(firm.name,true);String(firm.address||'').split('\n').forEach(l=>ln(l));
-  y+=2.8;lab('T:',firm.tel);y+=5.8;lab('E:',firm.email);y+=2.8;lab('W:',firm.web);y+=5.7;
-  ln('Registered in England:',true);ln(`Number ${firm.reg}`);
+function drawFooter(doc){
+  const addr=String(firm.address||'').split('\n').map(s=>s.trim()).filter(Boolean).join(', ');
+  doc.setDrawColor(...RULE);doc.setLineWidth(.2);doc.line(PM,PH-PX(42),PR,PH-PX(42));
+  doc.setFontSize(6.6);doc.setTextColor(...MUTED);doc.setFont('helvetica','bold');doc.text(firm.name,PM,PH-PX(30));
+  const w=doc.getTextWidth(firm.name+'  ');doc.setFont('helvetica','normal');
+  doc.text(fitText(doc,'·  '+addr,110,6.6),PM+w,PH-PX(30));
+  doc.text(`${firm.tel}  ·  ${String(firm.web||'').replace(/^https?:\/\//,'')}`,PR,PH-PX(30),{align:'right'});
+}
+function drawCover(doc,toc){
+  const p=S.project;
+  try{doc.addImage(BRAND.coverHeader,'PNG',PM,PX(74),PX(686),PX(120))}catch(e){}
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');
+  doc.setFontSize(21);doc.text("Designer's Risk Assessment",PR-PX(26),PX(74)+12.6,{align:'right'});
+  doc.setFontSize(9.5);doc.text(fitText(doc,docRef(p),140,9.5),PR-PX(26),PX(74)+19.2,{align:'right'});
+  doc.setFontSize(8.5);doc.text(`Issued  ${p.date?fmtDate(p.date):'-'}`,PR-PX(26),PX(74)+24.4,{align:'right'});
+  const top=PX(74+120+60),SW=PX(168),MX=PM+SW+PX(34),MW=PR-MX;
+  const head=(t,x,y,w)=>{doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(t,x,y);
+    doc.setDrawColor(...TEAL);doc.setLineWidth(.35);doc.line(x,y+2.2,x+w,y+2.2);return y+7};
+  // sidebar
+  let y=head('Client',PM,top,SW);doc.setFontSize(8.3);doc.setTextColor(...INK);
+  doc.setFont('helvetica','bold');doc.splitTextToSize(dash(p.client),SW).slice(0,3).forEach(l=>{doc.text(l,PM,y);y+=4});
+  y=head('Project',PM,y+5,SW);doc.setFont('helvetica','normal');
+  (projLines(p).length?projLines(p):['-']).forEach((l,k)=>{doc.setFont('helvetica',k?'normal':'bold');doc.splitTextToSize(l,SW).slice(0,2).forEach(t=>{doc.text(t,PM,y);y+=4})});
+  y=head('Contact',PM,y+5,SW);doc.setFont('helvetica','normal');
+  [[BRAND.icPhone,firm.tel],[BRAND.icMail,firm.email],[BRAND.icWeb,String(firm.web||'').replace(/^https?:\/\//,'')]].forEach(([ic,t])=>{
+    try{doc.addImage(ic,'PNG',PM,y-3.2,4.2,4.2)}catch(e){}doc.text(fitText(doc,t,SW-7,8.3),PM+7,y);y+=6.2});
+  // main column: issue details
+  y=head('Issue details',MX,top,MW);
+  const tw=(MW-2*PX(10))/3,th=15.5;
+  [['Job no.',dash(p.job),13],['Revision',dash(p.rev),13],['Issue date',p.date?fmtDate(p.date):'-',11]].forEach(([k,v,fs],i)=>{
+    const x=MX+i*(tw+PX(10));if(i===0){doc.setFillColor(...TINT);doc.rect(x,y,tw,th,'F')}
+    doc.setDrawColor(...TEAL);doc.setLineWidth(.3);doc.rect(x,y,tw,th);
+    doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(...TEAL_DK);doc.text(k.toUpperCase(),x+PX(12),y+5,{charSpace:.3});
+    doc.setFontSize(fs);doc.setTextColor(...INK);doc.text(fitText(doc,v,tw-PX(24),fs,7),x+PX(12),y+11.6)});
+  y+=th+7;
+  const half=(MW-PX(10))/2;
+  [['Prepared by',p.engineer],['Checked by',p.checkedBy]].forEach(([k,v],i)=>{const x=MX+i*(half+PX(10));
+    doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(...TEAL_DK);doc.text(k.toUpperCase(),x,y,{charSpace:.3});
+    doc.setFontSize(8.3);doc.setTextColor(...INK);doc.text(dash(v),x,y+4.6);
+    doc.setDrawColor(...RULE);doc.setLineWidth(.2);doc.line(x,y+7,x+half,y+7)});
+  y+=17;
+  // contents
+  y=head('Inside this document',MX,y,MW);
+  toc.forEach((e,k)=>{doc.setFont('helvetica','bold');doc.setFontSize(8.3);doc.setTextColor(...TEAL_DK);doc.text(String(k+1).padStart(2,'0'),MX,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(...INK);doc.text(e.t,MX+8,y);doc.text(String(e.page),PR,y,{align:'right'});
+    doc.setDrawColor(...RULE);doc.setLineWidth(.15);doc.line(MX+8,y+1.8,PR,y+1.8);y+=6.4});
+  // banner + address
+  try{doc.addImage(BRAND.banner,'PNG',PX(30),PX(886),PX(734),PX(118))}catch(e){}
+  doc.setFontSize(6.6);doc.setTextColor(...MUTED);let ay=PH-PX(52)-12;
+  doc.setFont('helvetica','bold');doc.text(firm.name,PR,ay,{align:'right'});doc.setFont('helvetica','normal');
+  String(firm.address||'').split('\n').filter(Boolean).forEach(l=>{ay+=3;doc.text(l.trim(),PR,ay,{align:'right'})});
+  ay+=3;doc.text(`Registered in England: Number ${firm.reg}`,PR,ay,{align:'right'});
 }
 function buildPdf(){
   const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const M=13,W=210,p=S.project,firmName=firm.name;
-  drawCover(doc);doc.addPage();let y=55;
+  const M=PM,W=PW,p=S.project,firmName=firm.name,TOP=PX(150),BOT=PH-PX(58);
+  const toc=[];doc.addPage();let y=TOP;   // page 1 is the cover, drawn last once page numbers are known
+  const pg=()=>doc.getCurrentPageInfo().pageNumber;
   const para=(t,opt={})=>{doc.setFont('helvetica',opt.style||'normal');doc.setFontSize(opt.size||8.6);doc.setTextColor(...(opt.color||INK));
-    const ind=opt.indent||0,lines=doc.splitTextToSize(t,W-2*M-ind);
-    if(y+lines.length*3.9>281){doc.addPage();y=55}
+    const ind=opt.indent||0,lines=doc.splitTextToSize(t,PR-M-ind);
+    if(y+lines.length*3.9>BOT){doc.addPage();y=TOP}
     doc.text(lines,M+ind,y,{lineHeightFactor:1.3});y+=lines.length*(opt.size||8.6)*.3528*1.3+(opt.after??2.6)};
-  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...INK);
-  const ttl="HEALTH & SAFETY – DESIGNER'S RISK ASSESSMENT";doc.text(ttl,M,y);doc.setLineWidth(.3);doc.setDrawColor(...INK);doc.line(M,y+.9,M+doc.getTextWidth(ttl),y+.9);y+=7;
+  const section=(t,first)=>{if(!first)y+=6;if(y+14>BOT){doc.addPage();y=TOP}
+    toc.push({t,page:pg()});const n=String(toc.length).padStart(2,'0');
+    doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...TEAL_DK);doc.text(n,M,y);
+    doc.setTextColor(...INK);doc.text(t,M+9,y);doc.setDrawColor(...TEAL);doc.setLineWidth(.3);doc.line(M,y+2.4,PR,y+2.4);y+=9};
 
+  section('Health & safety – CDM 2015 Regulation 9',true);
   para('The aim of this section is to enable collation of Designer Risk Assessments from the Designers in the same format so that the Design Risk Management Register can be prepared and managed throughout the project by the Principal Designer.');
   para('All Designers are required to provide Design Risk Information with their designs in compliance with CDM Regulation 9(2)-9(4) which requires application of the General Principles of Prevention and consideration of The Workplace (Health, Safety and Welfare) Regulations 1992 (Regulation 9):');
-  const it={style:'italic',indent:4,after:1.2};
+  const it={style:'italic',indent:4,after:1.2,color:MUTED};
   para('(2)  When preparing or modifying a design the designer must take into account the general principles of prevention and any pre-construction information to eliminate, so far as is reasonably practicable, foreseeable risks to the health or safety of any person:',it);
   para('(a)  carrying out or liable to be affected by construction work',{...it,indent:8,after:.4});
   para('(b)  maintaining or cleaning a structure or',{...it,indent:8,after:.4});
@@ -299,34 +330,33 @@ function buildPdf(){
   notes.push('Risk ratings: H = High, M = Medium, L = Low. The initial rating is before design mitigation; the revised rating is the residual risk after the design measures and information given.');
   notes.forEach(n=>para(n));
   if(p.desc||p.pd||p.pc||p.notes){
-    y+=1;doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...INK);doc.text('SCOPE OF WORKS',M,y);doc.line(M,y+.9,M+doc.getTextWidth('SCOPE OF WORKS'),y+.9);y+=5.5;
+    section('Scope of works');
     if(p.desc)para(p.desc);
     if(p.pd||p.pc)para(`Principal Designer: ${dash(p.pd)}.   Principal / main contractor: ${dash(p.pc)}.`);
     if(p.notes)para(p.notes);
   }
-  // register rows
+  section('Risk register');
   const rows=[];
   const rc=v=>({content:v,styles:{fillColor:RC[v],textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:9}});
   CATS.forEach(c=>{
     const items=allRisks().filter(r=>r.cat===c.id&&S.sel[r.id]);if(!items.length)return;
-    rows.push([{content:c.name,colSpan:7,styles:{fontStyle:'bold',fontSize:8.2,fillColor:[226,239,242],textColor:[47,111,125],halign:'left',cellPadding:{top:1.8,bottom:1.8,left:2,right:2}}}]);
+    rows.push([{content:c.name,colSpan:7,styles:{fontStyle:'bold',fontSize:8.2,fillColor:TINT,textColor:TEAL_DK,halign:'left',cellPadding:{top:1.8,bottom:1.8,left:2,right:2}}}]);
     items.forEach(r=>{const s=S.sel[r.id];
       rows.push([{content:r.id,styles:{halign:'center',valign:'middle',fontSize:7,fontStyle:'bold'}},s.hazard,s.risk,rc(s.ini),s.design||'N/A',s.info,rc(s.rev)])});
   });
-  doc.autoTable({startY:y+2,margin:{left:M,right:M,top:51,bottom:13.5},theme:'grid',
-    styles:{font:'helvetica',fontSize:7.6,cellPadding:1.4,lineColor:INK,lineWidth:.2,textColor:INK,valign:'middle',overflow:'linebreak'},
-    headStyles:{fillColor:T,textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:7.8},
-    head:[['Ref','Activity / Hazard','Risk(s)','Initial Risk Rating','Design Mitigation Measures and Controls (Eliminate, Reduce, Information, and Control)','Information','Revised Risk Rating']],
-    columnStyles:{0:{cellWidth:15},1:{cellWidth:29},2:{cellWidth:29},3:{cellWidth:13},4:{cellWidth:40},5:{cellWidth:45},6:{cellWidth:13}},
+  doc.autoTable({startY:y,margin:{left:M,right:PW-PR,top:TOP-4,bottom:PH-BOT+2},theme:'grid',
+    styles:{font:'helvetica',fontSize:7.6,cellPadding:1.4,lineColor:RULE,lineWidth:.2,textColor:INK,valign:'middle',overflow:'linebreak'},
+    headStyles:{fillColor:[255,255,255],textColor:TEAL_DK,fontStyle:'bold',halign:'center',valign:'bottom',fontSize:6.8,lineColor:RULE},
+    head:[['REF','ACTIVITY / HAZARD','RISK(S)','INITIAL RISK RATING','DESIGN MITIGATION MEASURES AND CONTROLS (ELIMINATE, REDUCE, INFORMATION, AND CONTROL)','INFORMATION','REVISED RISK RATING']],
+    columnStyles:{0:{cellWidth:15},1:{cellWidth:28},2:{cellWidth:28},3:{cellWidth:13},4:{cellWidth:38.5},5:{cellWidth:43.2},6:{cellWidth:13}},
+    didDrawCell:d=>{if(d.section==='head'){doc.setDrawColor(...TEAL);doc.setLineWidth(.45);doc.line(d.cell.x,d.cell.y+d.cell.height,d.cell.x+d.cell.width,d.cell.y+d.cell.height)}},
     body:rows,rowPageBreak:'avoid'});
-  y=doc.lastAutoTable.finalY+8;if(y>276){doc.addPage();y=55}
-doc.setFont('helvetica','italic');doc.setFontSize(7.6);doc.setTextColor(...TXT);
-  doc.text(doc.splitTextToSize('This assessment is to be read in conjunction with the J B Langley Associates Ltd structural calculations and drawings and all relevant Architects\' drawings. Any risks identified during construction that are not covered here are to be reported to the Engineer before the work concerned proceeds.'.replace('J B Langley Associates Ltd',firmName),W-2*M),M,Math.min(y,282));
+  y=doc.lastAutoTable.finalY+8;if(y>BOT-8){doc.addPage();y=TOP}
+  doc.setFont('helvetica','italic');doc.setFontSize(7.6);doc.setTextColor(...MUTED);
+  doc.text(doc.splitTextToSize('This assessment is to be read in conjunction with the J B Langley Associates Ltd structural calculations and drawings and all relevant Architects\' drawings. Any risks identified during construction that are not covered here are to be reported to the Engineer before the work concerned proceeds.'.replace('J B Langley Associates Ltd',firmName),PR-M),M,y);
   const n=doc.getNumberOfPages();
-  for(let i=2;i<=n;i++){doc.setPage(i);drawHeader(doc,i,n);
-    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...TXT);
-    doc.text(`${firmName} · Registered in England: Number ${firm.reg}`,M,292);
-    if(p.docNo)doc.text(`${p.docNo}${p.rev?'-'+p.rev:''}`,W-M,292,{align:'right'});}
+  for(let i=2;i<=n;i++){doc.setPage(i);drawHeader(doc,i,n)}
+  doc.setPage(1);drawCover(doc,toc);
   return doc;
 }
 $('pdfBtn').addEventListener('click',()=>{
