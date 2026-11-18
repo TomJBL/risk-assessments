@@ -154,20 +154,32 @@ window.buildPdf=function(){
   }
   part('Part ii – Risk register');
   section('Risk register');
-  const rows=[];
+  // Risk register table. A section heading row is kept with its first risk: the table is laid out on a
+  // scratch document first, and any heading left at the foot of a page gets a blank spacer row above it.
   const rc=v=>({content:v,styles:{fillColor:RC[v],textColor:255,fontStyle:'bold',halign:'center',valign:'middle',fontSize:9}});
-  CATS.forEach(c=>{
-    const items=allRisks().filter(r=>r.cat===c.id&&S.sel[r.id]);if(!items.length)return;
-    rows.push([{content:c.name,colSpan:7,styles:{fontStyle:'bold',fontSize:8.2,fillColor:TINT,textColor:TEAL_DK,halign:'left',cellPadding:{top:1.8,bottom:1.8,left:1.6,right:1.6}}}]);
-    items.forEach(r=>{const s=S.sel[r.id];
-      rows.push([{content:r.id,styles:{halign:'center',valign:'middle',fontSize:7,fontStyle:'bold'}},s.hazard,s.risk,rc(s.ini),s.design||'N/A',s.info,rc(s.rev)])});
-  });
-  doc.autoTable({startY:y-3.2,margin:{left:M,right:PW-PR,top:TOP-4,bottom:PH-BOT+2},theme:'plain',
+  const buildRows=spacers=>{const rows=[];
+    CATS.forEach(c=>{
+      const items=allRisks().filter(r=>r.cat===c.id&&S.sel[r.id]);if(!items.length)return;
+      if(spacers[c.id]){const sp=[{content:'',colSpan:7,styles:{minCellHeight:spacers[c.id],cellPadding:0}}];sp.spacer=true;rows.push(sp)}
+      const g=[{content:c.name,colSpan:7,styles:{fontStyle:'bold',fontSize:8.2,fillColor:TINT,textColor:TEAL_DK,halign:'left',cellPadding:{top:1.8,bottom:1.8,left:1.6,right:1.6}}}];g.group=c.id;rows.push(g);
+      items.forEach(r=>{const s=S.sel[r.id];
+        rows.push([{content:r.id,styles:{halign:'center',valign:'middle',fontSize:7,fontStyle:'bold'}},s.hazard,s.risk,rc(s.ini),s.design||'N/A',s.info,rc(s.rev)])});
+    });return rows};
+  const regBottom=BOT-2,tableOpts=(target,body,hook)=>({startY:y-3.2,margin:{left:M,right:PW-PR,top:TOP-4,bottom:PH-regBottom},theme:'plain',
     styles:{font:'helvetica',fontSize:7.8,cellPadding:{top:1.6,bottom:1.6,left:1.1,right:1.1},textColor:INK,valign:'middle',overflow:'linebreak'},
     headStyles:{textColor:TEAL_DK,fontStyle:'bold',halign:'center',valign:'bottom',fontSize:6.8},
     head:[['REF','ACTIVITY / HAZARD','RISK(S)','INITIAL RISK RATING','DESIGN MITIGATION MEASURES AND CONTROLS (ELIMINATE, REDUCE, INFORMATION, AND CONTROL)','INFORMATION','REVISED RISK RATING']],
     columnStyles:{0:{cellWidth:15},1:{cellWidth:28},2:{cellWidth:28},3:{cellWidth:13},4:{cellWidth:39.5},5:{cellWidth:44.9},6:{cellWidth:13}},
-    didDrawCell:d=>ruleRows(d,true),body:rows,rowPageBreak:'avoid'});
+    didDrawCell:hook,body,rowPageBreak:'avoid'});
+  const spacers={};let rows=buildRows(spacers);
+  for(let pass=0;pass<12;pass++){
+    const scratch=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),pos=[];
+    scratch.autoTable(tableOpts(scratch,rows,d=>{if(d.section==='body'&&d.column.index===0)pos[d.row.index]={pg:scratch.getCurrentPageInfo().pageNumber,y:d.cell.y}}));
+    const gi=rows.findIndex((r,i)=>r.group&&pos[i]&&pos[i+1]&&pos[i+1].pg!==pos[i].pg);
+    if(gi<0)break;
+    spacers[rows[gi].group]=Math.max(.5,regBottom-pos[gi].y-.3);rows=buildRows(spacers);
+  }
+  doc.autoTable(tableOpts(doc,rows,d=>{if(!(d.row.raw&&d.row.raw.spacer))ruleRows(d,true)}));
   y=doc.lastAutoTable.finalY+7;if(y>BOT-8)newPage();
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(...MUTED);
   doc.text(doc.splitTextToSize('This assessment is to be read in conjunction with the J B Langley Associates Ltd structural calculations and drawings and all relevant Architects\' drawings. Any risks identified during construction that are not covered here are to be reported to the Engineer before the work concerned proceeds.'.replace('J B Langley Associates Ltd',firmName),PR-M),M,y,{lineHeightFactor:3.6/(8*PT)});
@@ -177,4 +189,4 @@ window.buildPdf=function(){
   return doc;
 }
 
-})();window.__injected=2;
+})();window.__injected=3;
