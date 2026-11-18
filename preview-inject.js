@@ -21,7 +21,7 @@ window.drawHeader=function(doc,page,total){
   doc.text(fitText(doc,`${docRef(p)}  ·  ${dash(projLines(p)[0])}`,120,8.5),PR,20.2,{align:'right'});
   doc.setDrawColor(...TEAL);doc.setLineWidth(RULE_W);doc.line(PM,22.5,PR,22.5);
   // details strip, columns as the calc pack (client, prepared by, checked, rev, date, page)
-  const cols=[['Client',dash(p.client),72.3],['Prepared by',dash(p.engineer),98.8],['Checked',dash(p.checkedBy),125.2],['Rev',dash(p.rev),144.5],['Date',p.date?fmtDate(p.date):'-',171],['Page',`${page} of ${total}`,PR]];
+  const cols=[['Client',dash(p.client),72.3],['Prepared',dash(p.engineer),98.8],['Checked',dash(p.checkedBy),125.2],['Rev',dash(p.rev),144.5],['Date',p.date?fmtDate(p.date):'-',171],['Page',`${page} of ${total}`,PR]];
   let x=PM;
   cols.forEach(([k,v,nx],i)=>{const lw=capLabel(doc,k,x,26.8,6.5,.3)+1.8;
     const last=i===cols.length-1;doc.setFont('helvetica',last?'normal':'bold');doc.setTextColor(...(last?INK:TEAL_DK));
@@ -115,7 +115,7 @@ window.buildPdf=function(){
     const n=String(toc.filter(e=>!e.part).length+1).padStart(2,'0');toc.push({n,t});
     doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...TEAL_DK);doc.text(n,M,y);
     doc.setTextColor(...INK);doc.text(t,M+9.7,y);doc.setDrawColor(...TEAL);doc.setLineWidth(RULE_W);doc.line(M,y+1.5,PR,y+1.5);y+=8.9};
-  const sub=(t)=>{y+=3.4;if(y+10>BOT)newPage();doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(t,M,y);y+=5.4};
+  const sub=(t,need=10)=>{y+=3.4;if(y+need>BOT)newPage();doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...INK);doc.text(t,M,y);y+=5.4};
   const ruleRows=(d,headRule)=>{if(d.section==='head'&&headRule){doc.setDrawColor(...TEAL);doc.setLineWidth(RULE_HD);doc.line(d.cell.x,d.cell.y+d.cell.height,d.cell.x+d.cell.width,d.cell.y+d.cell.height)}
     if(d.section==='body'){doc.setDrawColor(...RULE);doc.setLineWidth(HAIR);doc.line(d.cell.x,d.cell.y+d.cell.height,d.cell.x+d.cell.width,d.cell.y+d.cell.height)}};
 
@@ -144,7 +144,7 @@ window.buildPdf=function(){
   if(p.desc||p.pd||p.pc||p.notes){
     section('Scope of works');
     if(p.desc){sub('Description of the works');para(p.desc)}
-    if(p.pd||p.pc){sub('Project team');
+    if(p.pd||p.pc){sub('Project team',22);
       doc.autoTable({startY:y-3.2,margin:{left:M,right:PW-PR,top:TOP-4,bottom:PH-BOT+2},theme:'plain',
         styles:{font:'helvetica',fontSize:9,cellPadding:{top:1.6,bottom:1.6,left:1.1,right:1.1},textColor:INK,valign:'middle'},
         columnStyles:{0:{cellWidth:54,fontStyle:'bold'}},body:[['Principal Designer',dash(p.pd)],['Principal / main contractor',dash(p.pc)]],
@@ -177,4 +177,4 @@ window.buildPdf=function(){
   return doc;
 }
 
-})();Object.assign(S.project,{status:'For information – to be read with the structural calculations',approvedBy:'BJJ',history:[{rev:'D01',date:'2026-11-02',desc:'First issue for construction information',by:'TEC',chk:'BJJ',app:'BJJ'}],rev:'D02',revNote:'Revised following Building Control comments'});window.__injected=1;
+})();window.__injected=2;
