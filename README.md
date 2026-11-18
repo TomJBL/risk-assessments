@@ -10,15 +10,19 @@ they stay in the engineer's own browser and in the project files they save.
 
 ## Using it
 
-1. Fill in the project details (project, client, job no, revision, engineer, checker).
+1. Fill in the project details (project, client, job no, revision, engineer, checker,
+   approver, revision description and status).
 2. Pick the types of works. The matching risks are marked **Suggested**.
 3. Press **Tick suggested risks**, then tick or untick anything else in the full list.
 4. Open a ticked risk to edit its wording or change its H / M / L ratings.
 5. Add a **project-specific risk** if the library doesn't cover something.
-6. Press **Create PDF**. The PDF has a cover page, the Health & Safety
-   section and the risk register.
+6. Press **Create PDF**. The PDF follows the calculation pack layout (v3): a cover page,
+   Part i (Health & Safety and scope of works) and Part ii (the risk register).
+   Creating the PDF also records that revision in the project's **Revision history**,
+   and every recorded revision is listed on the cover.
 7. Press **Save project file** and keep the `.json` file in the job folder. To issue
-   the next revision, use **Open project file** to load it.
+   the next revision, use **Open project file** to load it, change the revision and
+   its description, and create the PDF again.
 
 ## Publishing on GitHub Pages
 

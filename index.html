@@ -52,7 +52,15 @@
           <div class="field"><label for="p_eng">Engineer (prepared by)</label><input id="p_eng" data-p="engineer"></div>
           <div class="field"><label for="p_chk">Checked by</label><input id="p_chk" data-p="checkedBy"></div>
         </div>
-        <div class="field"><label for="p_date">Date</label><input id="p_date" type="date" data-p="date"></div>
+        <div class="row2">
+          <div class="field"><label for="p_date">Date</label><input id="p_date" type="date" data-p="date"></div>
+          <div class="field"><label for="p_app">Approved by</label><input id="p_app" data-p="approvedBy"></div>
+        </div>
+        <div class="field"><label for="p_revnote">Revision description</label><input id="p_revnote" data-p="revNote" placeholder="First issue"></div>
+        <div class="field"><label for="p_status">Status</label><input id="p_status" data-p="status"></div>
+        <div class="field"><span class="flabel">Revision history</span>
+          <p class="hint" id="histHint">Each revision is added here when you create its PDF, and every revision is listed on the cover.</p>
+          <ul class="hist" id="hist"></ul></div>
         <div class="field"><label for="p_desc">Scope of works</label><textarea id="p_desc" data-p="desc" rows="3"></textarea></div>
         <div class="row2">
           <div class="field"><label for="p_pd">Principal Designer</label><input id="p_pd" data-p="pd" placeholder="-"></div>
