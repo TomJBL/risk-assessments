@@ -50,6 +50,10 @@ make the change and commit. The site updates within a couple of minutes.
 - To add a risk, copy a row, give it a new unique ref (for example `STR-14`) and edit it.
 - Don't rename refs that are already in use, because saved project files refer to them.
 
+**After changing a file,** update the `?v=` number on the matching `<link>` or `<script>` line at
+the bottom of `index.html` (for example to today's date). That makes browsers load the new
+file instead of an old copy they have kept.
+
 ## Files
 
 | File | What it is |
